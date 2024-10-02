@@ -28,7 +28,7 @@ const DefaultView: React.FC = () => {
 	const [currentLocationWeather, setCurrentLocationWeather] = useState<WeatherData | null>(null);
 	const [searchedCityWeather, setSearchedCityWeather] = useState<WeatherData | null>(null); // To hold the searched city's weather
 	const [error, setError] = useState<string | null>(null);
-	const [searchTerm, setSearchTerm] = useState<string | undefined>();
+	const [searchTerm, setSearchTerm] = useState<string | undefined>('');
 	const [loading, setLoading] = useState<boolean>(false);
 	const [showLargestCities, setShowLargestCities] = useState<boolean>(true);
 	const navigate = useNavigate();
@@ -49,15 +49,9 @@ const DefaultView: React.FC = () => {
 			// Filter the responses based on the success flag
 			const validWeatherData = weatherResponses.filter((response) => !('success' in response && !response.success)) as WeatherData[];
 
-			// If no valid data was retrieved, notify the user
-			if (validWeatherData.length === 0) {
-				notifyError('No weather data could be fetched.');
-				setError('Failed to fetch weather data for all cities.');
-			} else {
-				setWeatherData(validWeatherData);
-				localStorage.setItem('weatherData', JSON.stringify(validWeatherData));
-				notifySuccess('Weather data loaded successfully.');
-			}
+			setWeatherData(validWeatherData);
+			localStorage.setItem('weatherData', JSON.stringify(validWeatherData));
+			notifySuccess('Weather data loaded successfully.');
 		} catch (error: any) {
 			notifyError('Failed to fetch weather data.');
 			setError('Failed to fetch weather data.');
@@ -123,6 +117,9 @@ const DefaultView: React.FC = () => {
 	// Handle the first loading for either current location or largest cities
 	useEffect(() => {
 		if (showLargestCities) {
+			// Reset search data when switching to largest cities
+			setSearchTerm('');
+			setSearchedCityWeather(null);
 			fetchWeatherDataForCities();
 		} else {
 			fetchCurrentLocationWeather();
@@ -212,7 +209,7 @@ const DefaultView: React.FC = () => {
 				</div>
 			)}
 
-			{!loading && !searchedCityWeather && showLargestCities && weatherData.length > 0 && (
+			{!loading && showLargestCities && weatherData.length > 0 && (
 				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
 					{weatherData
 						.sort((a, b) => a.location?.name?.localeCompare(b.location?.name || '') || 0)
@@ -263,18 +260,21 @@ const DefaultView: React.FC = () => {
 			{/* The two buttons for switching */}
 			{!loading && (
 				<div className="mt-6 flex justify-center space-x-4">
-					<button
-						onClick={() => setShowLargestCities(true)}
-						className="px-4 py-2 bg-green-600 text-white rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-150 ease-in-out"
-					>
-						Show Largest Cities Weather
-					</button>
-					<button
-						onClick={() => setShowLargestCities(false)}
-						className="px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-					>
-						Show Current Location Weather
-					</button>
+					{showLargestCities ? (
+						<button
+							onClick={() => setShowLargestCities(false)}
+							className="px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+						>
+							Show Current Location Weather
+						</button>
+					) : (
+						<button
+							onClick={() => setShowLargestCities(true)}
+							className="px-4 py-2 bg-green-600 text-white rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-150 ease-in-out"
+						>
+							Show Largest Cities Weather
+						</button>
+					)}
 				</div>
 			)}
 		</div>

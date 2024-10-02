@@ -5,8 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43ef6380-ce5a-4e9c-8e6e-cf951626af3c" name="Changes" comment="add env variable">
+      <change beforePath="$PROJECT_DIR$/.env.local" beforeDir="false" afterPath="$PROJECT_DIR$/.env.local" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/CityDetails.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/CityDetails.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/pages/default-view/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/default-view/index.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -162,7 +162,7 @@
       <workItem from="1727688492336" duration="964000" />
       <workItem from="1727710598226" duration="7414000" />
       <workItem from="1727773799491" duration="18100000" />
-      <workItem from="1727858812084" duration="6837000" />
+      <workItem from="1727858812084" duration="8189000" />
     </task>
     <task id="LOCAL-00001" summary="frontend weather app">
       <option name="closed" value="true" />
@@ -188,7 +188,15 @@
       <option name="project" value="LOCAL" />
       <updated>1727862370585</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="add env variable">
+      <option name="closed" value="true" />
+      <created>1727865955546</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1727865955546</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
