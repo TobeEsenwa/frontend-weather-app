@@ -24,9 +24,9 @@ const CityDetails: React.FC = () => {
 		return value ? JSON.parse(value) : null;
 	};
 
-	const notifyLoading = () => toast.loading('Fetching weather data...', { toastId: 'weather-toast' });
-	const notifySuccess = (message: string) => toast.update('weather-toast', { render: message, type: 'success', isLoading: false, autoClose: 2000 });
-	const notifyError = (message: string) => toast.update('weather-toast', { render: message, type: 'error', isLoading: false, autoClose: 2000 });
+	const notifyLoading = () => toast.loading('Fetching weather data...', { toastId: 'city-toast' });
+	const notifySuccess = (message: string) => toast.update('city-toast', { render: message, type: 'success', isLoading: false, autoClose: 2000 });
+	const notifyError = (message: string) => toast.update('city-toast', { render: message, type: 'error', isLoading: false, autoClose: 2000 });
 
 	const fetchWeather = useCallback(async () => {
 		if (city) {
@@ -76,7 +76,7 @@ const CityDetails: React.FC = () => {
 	const handleSaveNotes = () => {
 		setSavedNotes(notes);
 		saveToLocalStorage(`notes-${city}`, notes);
-		toast.success('Notes saved successfully!');
+		notifySuccess('Notes saved successfully!');
 	};
 
 	const handleEditNotes = () => {
@@ -88,7 +88,7 @@ const CityDetails: React.FC = () => {
 		setNotes('');
 		setSavedNotes(null);
 		localStorage.removeItem(`notes-${city}`);
-		toast.success('Notes deleted successfully!');
+		notifySuccess('Notes deleted successfully!');
 	};
 
 	if (loading) {
@@ -124,7 +124,7 @@ const CityDetails: React.FC = () => {
 	return (
 		<div className="container mx-auto px-4 py-8">
 			<ToastContainer />
-			<h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
+			<h1 className="text-3xl font-bold mb-6 text-center text-white">
 				Weather Details for {city}
 			</h1>
 			<div className="bg-white rounded-lg shadow-md overflow-hidden">
