@@ -25,41 +25,39 @@ const getWeatherIcon = (description: string | undefined): JSX.Element => {
 const DefaultView: React.FC = () => {
 	const [cities, setCities] = useState<string[]>(largestCities);
 	const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
+	const [currentLocationWeather, setCurrentLocationWeather] = useState<WeatherData | null>(null);
+	const [searchedCityWeather, setSearchedCityWeather] = useState<WeatherData | null>(null); // To hold the searched city's weather
 	const [error, setError] = useState<string | null>(null);
 	const [searchTerm, setSearchTerm] = useState<string | undefined>();
-	const [currentLocationWeather, setCurrentLocationWeather] = useState<WeatherData | null>(null);
 	const [loading, setLoading] = useState<boolean>(false);
+	const [showLargestCities, setShowLargestCities] = useState<boolean>(true);
 	const navigate = useNavigate();
 
-	const notifyLoading = () => toast.loading('Fetching weather data...');
-	const notifySuccess = (message: string) => toast.update('Fetching weather data...', { render: message, type: 'success', isLoading: false, autoClose: 2000 });
-	const notifyError = (message: string) => toast.update('Fetching weather data...', { render: message, type: 'error', isLoading: false, autoClose: 2000 });
+	// Helper function to reset toast and update it
+	const notifyLoading = () => toast.loading('Fetching weather data...', { toastId: 'weather-toast' });
+	const notifySuccess = (message: string) => toast.update('weather-toast', { render: message, type: 'success', isLoading: false, autoClose: 2000 });
+	const notifyError = (message: string) => toast.update('weather-toast', { render: message, type: 'error', isLoading: false, autoClose: 2000 });
 
-	const fetchWeatherData = useCallback(async () => {
+	const fetchWeatherDataForCities = useCallback(async () => {
 		setLoading(true);
 		notifyLoading();
-		const cachedData = localStorage.getItem('weatherData');
-		if (cachedData) {
-			setWeatherData(JSON.parse(cachedData));
-			notifySuccess('Weather data loaded from cache.');
-		}
 
 		try {
 			const weatherPromises = cities.map((city) => getWeatherByCity(city));
 			const weatherResponses = await Promise.all(weatherPromises);
 
 			// Filter the responses based on the success flag
-			const validWeatherData = weatherResponses.filter(
-				(response) => !('success' in response && response.success === false)
-			) as WeatherData[];
+			const validWeatherData = weatherResponses.filter((response) => !('success' in response && !response.success)) as WeatherData[];
 
+			// If no valid data was retrieved, notify the user
 			if (validWeatherData.length === 0) {
-				setError('Failed to fetch weather data.');
+				notifyError('No weather data could be fetched.');
+				setError('Failed to fetch weather data for all cities.');
+			} else {
+				setWeatherData(validWeatherData);
+				localStorage.setItem('weatherData', JSON.stringify(validWeatherData));
+				notifySuccess('Weather data loaded successfully.');
 			}
-
-			setWeatherData(validWeatherData);
-			localStorage.setItem('weatherData', JSON.stringify(validWeatherData));
-			notifySuccess('Weather data loaded successfully.');
 		} catch (error: any) {
 			notifyError('Failed to fetch weather data.');
 			setError('Failed to fetch weather data.');
@@ -68,54 +66,16 @@ const DefaultView: React.FC = () => {
 		}
 	}, [cities]);
 
-	const handleRemoveCity = (city: string | undefined) => {
-		if (!city) return;
-		setCities((prevCities) => prevCities.filter((c) => c !== city));
-		setWeatherData((prevData) => prevData.filter((w) => w.location?.name !== city));
-	};
-
-	const handleSearchCity = async () => {
-		if (searchTerm) {
-			setLoading(true);
-			try {
-				notifyLoading();
-				const newCityWeather = await getWeatherByCity(searchTerm);
-
-				// Handle the case where fetching weather fails
-				if ('success' in newCityWeather && !newCityWeather.success) {
-					notifyError(newCityWeather.message);
-					setError(newCityWeather.message);
-				} else {
-					setWeatherData((prevData) => [...prevData, newCityWeather as WeatherData]);
-					setCities((prevCities) => [...prevCities, (newCityWeather as WeatherData).location?.name || '']);
-					setSearchTerm('');
-					notifySuccess(`Weather data for ${(newCityWeather as WeatherData).location?.name} loaded.`);
-				}
-			} catch (error: any) {
-				notifyError('City not found.');
-				setError('City not found.');
-			} finally {
-				setLoading(false);
-			}
-		}
-	};
-
-	const handleCityClick = (city: string | undefined) => {
-		if (city) {
-			navigate(`/city/${city}`);
-		}
-	};
-
-	const fetchLocalWeather = useCallback(() => {
+	const fetchCurrentLocationWeather = useCallback(async () => {
 		setLoading(true);
+		notifyLoading();
+
 		if (navigator.geolocation) {
-			notifyLoading();
 			navigator.geolocation.getCurrentPosition(async (position) => {
 				const { latitude, longitude } = position.coords;
 				try {
 					const weather = await getWeatherByCoordinates(latitude, longitude);
 
-					// Handle the case where fetching local weather fails
 					if ('success' in weather && !weather.success) {
 						notifyError(weather.message);
 						setError(weather.message);
@@ -129,19 +89,57 @@ const DefaultView: React.FC = () => {
 				} finally {
 					setLoading(false);
 				}
-			}, () => {
-				fetchWeatherData();
-				setLoading(false);
 			});
 		} else {
-			fetchWeatherData();
+			notifyError('Geolocation is not supported by this browser.');
 			setLoading(false);
 		}
-	}, [fetchWeatherData]);
+	}, []);
 
+	const handleSearchCity = async () => {
+		if (searchTerm) {
+			setLoading(true);
+			notifyLoading();
+			try {
+				const newCityWeather = await getWeatherByCity(searchTerm);
+
+				if ('success' in newCityWeather && !newCityWeather.success) {
+					notifyError(newCityWeather.message);
+					setError(newCityWeather.message);
+				} else {
+					setSearchedCityWeather(newCityWeather as WeatherData); // Show only the searched city's weather
+					setSearchTerm('');
+					notifySuccess(`Weather data for ${(newCityWeather as WeatherData).location?.name} loaded.`);
+				}
+			} catch (error: any) {
+				notifyError('City not found.');
+				setError('City not found.');
+			} finally {
+				setLoading(false);
+			}
+		}
+	};
+
+	// Handle the first loading for either current location or largest cities
 	useEffect(() => {
-		fetchLocalWeather();
-	}, [fetchLocalWeather]);
+		if (showLargestCities) {
+			fetchWeatherDataForCities();
+		} else {
+			fetchCurrentLocationWeather();
+		}
+	}, [showLargestCities, fetchWeatherDataForCities, fetchCurrentLocationWeather]);
+
+	const handleRemoveCity = (city: string | undefined) => {
+		if (!city) return;
+		setCities((prevCities) => prevCities.filter((c) => c !== city));
+		setWeatherData((prevData) => prevData.filter((w) => w.location?.name !== city));
+	};
+
+	const handleCityClick = (city: string | undefined) => {
+		if (city) {
+			navigate(`/city/${city}`);
+		}
+	};
 
 	return (
 		<div className="container mx-auto px-4 py-8">
@@ -172,18 +170,50 @@ const DefaultView: React.FC = () => {
 				</div>
 			)}
 
-			{!loading && !currentLocationWeather && weatherData.length === 0 && (
-				<div className="flex flex-col items-center justify-center h-64">
-					<div className="text-red-500 mb-4">
-						<CircleAlert className="h-24 w-24" />
+			{!loading && searchedCityWeather && (
+				<div className="text-center">
+					<div className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer">
+						<div className="px-4 py-5 sm:p-6">
+							<h3 className="text-lg leading-6 font-medium text-gray-900">
+								{searchedCityWeather.location?.name || 'Unknown Location'}
+							</h3>
+							<div className="mt-2 flex items-center justify-between">
+								<div className="text-3xl font-semibold text-gray-700">
+									{searchedCityWeather.current?.temperature ?? 'N/A'}°C
+								</div>
+								{getWeatherIcon(searchedCityWeather.current?.weather_descriptions?.[0])}
+							</div>
+							<p className="mt-1 text-sm text-gray-500">
+								{searchedCityWeather.current?.weather_descriptions?.join(', ') || 'No description available'}
+							</p>
+						</div>
 					</div>
-					<p className="text-xl text-white font-semibold">No weather data found.</p>
-					<p className="pt-3 text-gray-500">Try searching for a different city or check your internet connection.</p>
 				</div>
 			)}
 
-			{!currentLocationWeather && weatherData.length > 0 && (
-				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+			{!loading && !searchedCityWeather && currentLocationWeather && !showLargestCities && (
+				<div className="text-center">
+					<div className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer">
+						<div className="px-4 py-5 sm:p-6">
+							<h3 className="text-lg leading-6 font-medium text-gray-900">
+								{currentLocationWeather.location?.name || 'Unknown Location'}
+							</h3>
+							<div className="mt-2 flex items-center justify-between">
+								<div className="text-3xl font-semibold text-gray-700">
+									{currentLocationWeather.current?.temperature ?? 'N/A'}°C
+								</div>
+								{getWeatherIcon(currentLocationWeather.current?.weather_descriptions?.[0])}
+							</div>
+							<p className="mt-1 text-sm text-gray-500">
+								{currentLocationWeather.current?.weather_descriptions?.join(', ') || 'No description available'}
+							</p>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{!loading && !searchedCityWeather && showLargestCities && weatherData.length > 0 && (
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
 					{weatherData
 						.sort((a, b) => a.location?.name?.localeCompare(b.location?.name || '') || 0)
 						.map((data, index) => (
@@ -217,6 +247,34 @@ const DefaultView: React.FC = () => {
 								</div>
 							</div>
 						))}
+				</div>
+			)}
+
+			{!loading && !searchedCityWeather && !currentLocationWeather && weatherData.length === 0 && (
+				<div className="flex flex-col items-center justify-center h-64">
+					<div className="text-red-500 mb-4">
+						<CircleAlert className="h-24 w-24" />
+					</div>
+					<p className="text-xl text-white font-semibold">No weather data found.</p>
+					<p className="pt-3 text-gray-500">Try searching for a different city or check your internet connection.</p>
+				</div>
+			)}
+
+			{/* The two buttons for switching */}
+			{!loading && (
+				<div className="mt-6 flex justify-center space-x-4">
+					<button
+						onClick={() => setShowLargestCities(true)}
+						className="px-4 py-2 bg-green-600 text-white rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-150 ease-in-out"
+					>
+						Show Largest Cities Weather
+					</button>
+					<button
+						onClick={() => setShowLargestCities(false)}
+						className="px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+					>
+						Show Current Location Weather
+					</button>
 				</div>
 			)}
 		</div>

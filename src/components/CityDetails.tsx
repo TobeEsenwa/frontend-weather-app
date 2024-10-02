@@ -24,21 +24,9 @@ const CityDetails: React.FC = () => {
 		return value ? JSON.parse(value) : null;
 	};
 
-	const notifyLoading = () => toast.loading('Fetching weather data...');
-	const notifySuccess = (message: string) =>
-		toast.update('Fetching weather data...', {
-			render: message,
-			type: 'success',
-			isLoading: false,
-			autoClose: 2000,
-		});
-	const notifyError = (message: string) =>
-		toast.update('Fetching weather data...', {
-			render: message,
-			type: 'error',
-			isLoading: false,
-			autoClose: 2000,
-		});
+	const notifyLoading = () => toast.loading('Fetching weather data...', { toastId: 'weather-toast' });
+	const notifySuccess = (message: string) => toast.update('weather-toast', { render: message, type: 'success', isLoading: false, autoClose: 2000 });
+	const notifyError = (message: string) => toast.update('weather-toast', { render: message, type: 'error', isLoading: false, autoClose: 2000 });
 
 	const fetchWeather = useCallback(async () => {
 		if (city) {
