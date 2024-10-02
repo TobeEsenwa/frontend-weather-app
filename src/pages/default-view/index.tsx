@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, CircleAlert} from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudSnow, CloudLightning, Wind, CircleAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -28,7 +28,7 @@ const DefaultView: React.FC = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [searchTerm, setSearchTerm] = useState<string | undefined>();
 	const [currentLocationWeather, setCurrentLocationWeather] = useState<WeatherData | null>(null);
-	const [loading, setLoading] = useState<boolean>(false); // New loading state
+	const [loading, setLoading] = useState<boolean>(false);
 	const navigate = useNavigate();
 
 	const notifyLoading = () => toast.loading('Fetching weather data...');
@@ -36,7 +36,7 @@ const DefaultView: React.FC = () => {
 	const notifyError = (message: string) => toast.update('Fetching weather data...', { render: message, type: 'error', isLoading: false, autoClose: 2000 });
 
 	const fetchWeatherData = useCallback(async () => {
-		setLoading(true); // Set loading state
+		setLoading(true);
 		notifyLoading();
 		const cachedData = localStorage.getItem('weatherData');
 		if (cachedData) {
@@ -47,14 +47,24 @@ const DefaultView: React.FC = () => {
 		try {
 			const weatherPromises = cities.map((city) => getWeatherByCity(city));
 			const weatherResponses = await Promise.all(weatherPromises);
-			setWeatherData(weatherResponses);
-			localStorage.setItem('weatherData', JSON.stringify(weatherResponses));
+
+			// Filter the responses based on the success flag
+			const validWeatherData = weatherResponses.filter(
+				(response) => !('success' in response && response.success === false)
+			) as WeatherData[];
+
+			if (validWeatherData.length === 0) {
+				setError('Failed to fetch weather data.');
+			}
+
+			setWeatherData(validWeatherData);
+			localStorage.setItem('weatherData', JSON.stringify(validWeatherData));
 			notifySuccess('Weather data loaded successfully.');
 		} catch (error: any) {
 			notifyError('Failed to fetch weather data.');
 			setError('Failed to fetch weather data.');
 		} finally {
-			setLoading(false); // Stop loading
+			setLoading(false);
 		}
 	}, [cities]);
 
@@ -66,19 +76,26 @@ const DefaultView: React.FC = () => {
 
 	const handleSearchCity = async () => {
 		if (searchTerm) {
-			setLoading(true); // Start loading
+			setLoading(true);
 			try {
 				notifyLoading();
 				const newCityWeather = await getWeatherByCity(searchTerm);
-				setWeatherData((prevData) => [...prevData, newCityWeather]);
-				setCities((prevCities) => [...prevCities, newCityWeather.location?.name || '']);
-				setSearchTerm('');
-				notifySuccess(`Weather data for ${newCityWeather.location?.name} loaded.`);
+
+				// Handle the case where fetching weather fails
+				if ('success' in newCityWeather && !newCityWeather.success) {
+					notifyError(newCityWeather.message);
+					setError(newCityWeather.message);
+				} else {
+					setWeatherData((prevData) => [...prevData, newCityWeather as WeatherData]);
+					setCities((prevCities) => [...prevCities, (newCityWeather as WeatherData).location?.name || '']);
+					setSearchTerm('');
+					notifySuccess(`Weather data for ${(newCityWeather as WeatherData).location?.name} loaded.`);
+				}
 			} catch (error: any) {
 				notifyError('City not found.');
 				setError('City not found.');
 			} finally {
-				setLoading(false); // Stop loading
+				setLoading(false);
 			}
 		}
 	};
@@ -90,28 +107,35 @@ const DefaultView: React.FC = () => {
 	};
 
 	const fetchLocalWeather = useCallback(() => {
-		setLoading(true); // Start loading
+		setLoading(true);
 		if (navigator.geolocation) {
 			notifyLoading();
 			navigator.geolocation.getCurrentPosition(async (position) => {
 				const { latitude, longitude } = position.coords;
 				try {
 					const weather = await getWeatherByCoordinates(latitude, longitude);
-					setCurrentLocationWeather(weather);
-					notifySuccess(`Weather data for your location: ${weather.location?.name} loaded.`);
+
+					// Handle the case where fetching local weather fails
+					if ('success' in weather && !weather.success) {
+						notifyError(weather.message);
+						setError(weather.message);
+					} else {
+						setCurrentLocationWeather(weather as WeatherData);
+						notifySuccess(`Weather data for your location: ${(weather as WeatherData).location?.name} loaded.`);
+					}
 				} catch (error) {
 					notifyError('Failed to fetch weather data for your location.');
 					setError('Failed to fetch weather data for your location.');
 				} finally {
-					setLoading(false); // Stop loading
+					setLoading(false);
 				}
 			}, () => {
-				fetchWeatherData(); // Fallback to fetching weather for largest cities
-				setLoading(false); // Stop loading
+				fetchWeatherData();
+				setLoading(false);
 			});
 		} else {
-			fetchWeatherData(); // Fallback to fetching weather for largest cities
-			setLoading(false); // Stop loading
+			fetchWeatherData();
+			setLoading(false);
 		}
 	}, [fetchWeatherData]);
 
@@ -140,23 +164,21 @@ const DefaultView: React.FC = () => {
 				</button>
 			</div>
 
-			{loading && ( // Show loading spinner when loading is true
+			{loading && (
 				<div className="flex flex-col items-center justify-center h-64">
 					<div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 mb-4"></div>
 					<p className="text-xl text-white font-semibold">Fetching weather data...</p>
-					<p className="pt-3 text-gray-500">Please wait a moment while we retrieve the latest data for
-					                                  you.</p>
+					<p className="pt-3 text-gray-500">Please wait a moment while we retrieve the latest data for you.</p>
 				</div>
 			)}
 
-			{!loading && !currentLocationWeather && weatherData.length === 0 && ( // Show "No data found" when no weather data is available
+			{!loading && !currentLocationWeather && weatherData.length === 0 && (
 				<div className="flex flex-col items-center justify-center h-64">
 					<div className="text-red-500 mb-4">
 						<CircleAlert className="h-24 w-24" />
 					</div>
 					<p className="text-xl text-white font-semibold">No weather data found.</p>
-					<p className="pt-3 text-gray-500">Try searching for a different city or check your internet
-					                                  connection.</p>
+					<p className="pt-3 text-gray-500">Try searching for a different city or check your internet connection.</p>
 				</div>
 			)}
 

@@ -42,14 +42,21 @@ const CityDetails: React.FC = () => {
 
 	const fetchWeather = useCallback(async () => {
 		if (city) {
-			notifyLoading()
+			notifyLoading();
 			setLoading(true);
 			try {
 				if (navigator.onLine) {
 					const data = await getWeatherByCity(city);
-					setWeatherData(data);
-					saveToLocalStorage(`weather-${city}`, data);
-					notifySuccess(`Weather data for ${city} loaded successfully.`);
+
+					// Handle case when the API returns an error
+					if ('success' in data && !data.success) {
+						setError(data.message);
+						notifyError(data.message);
+					} else {
+						setWeatherData(data as WeatherData);
+						saveToLocalStorage(`weather-${city}`, data);
+						notifySuccess(`Weather data for ${city} loaded successfully.`);
+					}
 				} else {
 					const savedWeather = getFromLocalStorage(`weather-${city}`);
 					if (savedWeather) {
@@ -162,10 +169,10 @@ const CityDetails: React.FC = () => {
 					) : (
 						<div className="mt-2">
 							<textarea
-							  value={notes}
-							  onChange={(e) => setNotes(e.target.value)}
-							  placeholder="Add notes here"
-							  className="w-full h-24 p-2 border border-gray-300 rounded"
+								value={notes}
+								onChange={(e) => setNotes(e.target.value)}
+								placeholder="Add notes here"
+								className="w-full h-24 p-2 border border-gray-300 rounded"
 							/>
 							<button
 								onClick={handleSaveNotes}
